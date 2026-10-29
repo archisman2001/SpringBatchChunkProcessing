@@ -1,6 +1,7 @@
 package com.springbatch.ChunkProcessing.config;
 
 import com.springbatch.ChunkProcessing.domain.Product;
+import com.springbatch.ChunkProcessing.processor.MyProductItemProcessor;
 import com.springbatch.ChunkProcessing.reader.ProductNameItemReader;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
@@ -15,9 +16,11 @@ import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.item.Chunk;
+import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.batch.infrastructure.item.ItemWriter;
 import org.springframework.batch.infrastructure.item.database.Order;
+import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcPagingItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
@@ -113,6 +116,24 @@ public class BatchConfiguration {
     }
 
     @Bean
+    public ItemWriter<Product> jdbcBatchItemWriter(DataSource dataSource){
+        return new JdbcBatchItemWriterBuilder<Product>()
+                .dataSource(dataSource)
+                .sql("""
+                 INSERT INTO PRODUCT_DETAILS_OUTPUT
+                 (PRODUCT_ID, PRODUCT_NAME, PRODUCT_CATEGORY, PRODUCT_PRICE)
+                 VALUES (:productId, :productName, :productCategory, :productPrice)
+                 """)
+                .beanMapped()
+                .build();
+    }
+
+    @Bean
+    public ItemProcessor<Product, Product> myProductItemProcessor(){
+        return new MyProductItemProcessor();
+    }
+
+    @Bean
     public Step step1() throws Exception {
         //1. For List of string based chunk
 
@@ -146,12 +167,21 @@ public class BatchConfiguration {
 //                    }
 //                }).build();
 
-        //3. For Writing data to csv file
+        //3. For Writing data to csv file and database
+
+//        return new StepBuilder("ChunkBasedstep1", jobRepository)
+//                .<Product, Product>chunk(3)
+//                .reader(jdbcPagingItemReader(dataSource))
+//                .writer(jdbcBatchItemWriter(dataSource))
+//                .build();
+
+        //4. Item processing started
 
         return new StepBuilder("ChunkBasedstep1", jobRepository)
                 .<Product, Product>chunk(3)
                 .reader(jdbcPagingItemReader(dataSource))
-                .writer(flatFileItemWriter())
+                .processor(myProductItemProcessor())
+                .writer(jdbcBatchItemWriter(dataSource))
                 .build();
     }
 

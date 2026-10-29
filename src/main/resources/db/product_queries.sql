@@ -19,3 +19,11 @@ VALUES (4, 'Samsung Crystal 4K', 'Televisions', 500);
 
 INSERT INTO PRODUCT_DETAILS
 VALUES (5, 'Yonex Badminton Racquet', 'Sports Accessories', 100);
+
+
+CREATE TABLE PRODUCT_DETAILS_OUTPUT (
+                                        PRODUCT_ID INT,
+                                        PRODUCT_NAME VARCHAR(100),
+                                        PRODUCT_CATEGORY VARCHAR(100),
+                                        PRODUCT_PRICE INT
+);
