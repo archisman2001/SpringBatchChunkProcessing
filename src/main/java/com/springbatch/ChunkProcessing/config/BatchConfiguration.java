@@ -1,5 +1,6 @@
 package com.springbatch.ChunkProcessing.config;
 
+import com.springbatch.ChunkProcessing.domain.OSProduct;
 import com.springbatch.ChunkProcessing.domain.Product;
 import com.springbatch.ChunkProcessing.processor.MyProductItemProcessor;
 import com.springbatch.ChunkProcessing.reader.ProductNameItemReader;
@@ -115,21 +116,34 @@ public class BatchConfiguration {
                 .build();
     }
 
+//    @Bean
+//    public ItemWriter<Product> jdbcBatchItemWriter(DataSource dataSource){
+//        return new JdbcBatchItemWriterBuilder<Product>()
+//                .dataSource(dataSource)
+//                .sql("""
+//                 INSERT INTO PRODUCT_DETAILS_OUTPUT
+//                 (PRODUCT_ID, PRODUCT_NAME, PRODUCT_CATEGORY, PRODUCT_PRICE)
+//                 VALUES (:productId, :productName, :productCategory, :productPrice)
+//                 """)
+//                .beanMapped()
+//                .build();
+//    }
+
     @Bean
-    public ItemWriter<Product> jdbcBatchItemWriter(DataSource dataSource){
-        return new JdbcBatchItemWriterBuilder<Product>()
+    public ItemWriter<OSProduct> jdbcBatchItemWriter(DataSource dataSource){
+        return new JdbcBatchItemWriterBuilder<OSProduct>()
                 .dataSource(dataSource)
                 .sql("""
-                 INSERT INTO PRODUCT_DETAILS_OUTPUT
-                 (PRODUCT_ID, PRODUCT_NAME, PRODUCT_CATEGORY, PRODUCT_PRICE)
-                 VALUES (:productId, :productName, :productCategory, :productPrice)
+                 INSERT INTO OS_PRODUCT_DETAILS
+                 (PRODUCT_ID, PRODUCT_NAME, PRODUCT_CATEGORY, PRODUCT_PRICE, TAX_PERCENT, SKU, SHIPPING_RATE)
+                 VALUES (:productId, :productName, :productCategory, :productPrice, :taxPercent, :sku, :shippingRate)
                  """)
                 .beanMapped()
                 .build();
     }
 
     @Bean
-    public ItemProcessor<Product, Product> myProductItemProcessor(){
+    public ItemProcessor<Product, OSProduct> myProductItemProcessor(){
         return new MyProductItemProcessor();
     }
 
@@ -178,7 +192,7 @@ public class BatchConfiguration {
         //4. Item processing started
 
         return new StepBuilder("ChunkBasedstep1", jobRepository)
-                .<Product, Product>chunk(3)
+                .<Product, OSProduct>chunk(3)
                 .reader(jdbcPagingItemReader(dataSource))
                 .processor(myProductItemProcessor())
                 .writer(jdbcBatchItemWriter(dataSource))

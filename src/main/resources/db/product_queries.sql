@@ -27,3 +27,13 @@ CREATE TABLE PRODUCT_DETAILS_OUTPUT (
                                         PRODUCT_CATEGORY VARCHAR(100),
                                         PRODUCT_PRICE INT
 );
+
+CREATE TABLE OS_PRODUCT_DETAILS (
+                                    PRODUCT_ID INT,
+                                    PRODUCT_NAME VARCHAR(100),
+                                    PRODUCT_CATEGORY VARCHAR(100),
+                                    PRODUCT_PRICE INT,
+                                    TAX_PERCENT INT,
+                                    SKU VARCHAR(100),
+                                    SHIPPING_RATE INT
+);
