@@ -5,11 +5,11 @@ import com.springbatch.ChunkProcessing.domain.Product;
 import org.jspecify.annotations.Nullable;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 
-public class MyProductItemProcessor implements ItemProcessor<Product, OSProduct> {
+public class TransformProductItemProcessor implements ItemProcessor<Product, OSProduct> {
 
     @Override
     public @Nullable OSProduct process(Product item) throws Exception {
-        System.out.println("Process() executed");
+        System.out.println("transformProductItemProcessor() executed");
 
         //1. Same pojo transformation -> input and output pojo will be same <Product, Product>, just transforming the data inside it
 //        Integer price=item.getProductPrice();

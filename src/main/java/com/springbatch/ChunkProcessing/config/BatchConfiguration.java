@@ -2,21 +2,16 @@ package com.springbatch.ChunkProcessing.config;
 
 import com.springbatch.ChunkProcessing.domain.OSProduct;
 import com.springbatch.ChunkProcessing.domain.Product;
-import com.springbatch.ChunkProcessing.processor.MyProductItemProcessor;
+import com.springbatch.ChunkProcessing.domain.ProductValidator;
+import com.springbatch.ChunkProcessing.processor.FilterProductItemProcessor;
+import com.springbatch.ChunkProcessing.processor.TransformProductItemProcessor;
 import com.springbatch.ChunkProcessing.reader.ProductNameItemReader;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.job.flow.JobExecutionDecider;
-import org.springframework.batch.core.listener.StepExecutionListener;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.Step;
-import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.core.step.tasklet.Tasklet;
-import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.batch.infrastructure.item.ItemWriter;
@@ -26,8 +21,8 @@ import org.springframework.batch.infrastructure.item.database.builder.JdbcCursor
 import org.springframework.batch.infrastructure.item.database.builder.JdbcPagingItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemWriterBuilder;
-import org.springframework.batch.infrastructure.item.file.mapping.BeanWrapperFieldSetMapper;
-import org.springframework.batch.infrastructure.repeat.RepeatStatus;
+import org.springframework.batch.infrastructure.item.support.CompositeItemProcessor;
+import org.springframework.batch.infrastructure.item.validator.ValidatingItemProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -129,6 +124,8 @@ public class BatchConfiguration {
 //                .build();
 //    }
 
+
+    //transformation
     @Bean
     public ItemWriter<OSProduct> jdbcBatchItemWriter(DataSource dataSource){
         return new JdbcBatchItemWriterBuilder<OSProduct>()
@@ -143,8 +140,31 @@ public class BatchConfiguration {
     }
 
     @Bean
-    public ItemProcessor<Product, OSProduct> myProductItemProcessor(){
-        return new MyProductItemProcessor();
+    public ItemProcessor<Product, OSProduct> transformProductItemProcessor(){
+        return new TransformProductItemProcessor();
+    }
+
+    @Bean
+    public ItemProcessor<Product, Product> filterProductItemProcessor(){
+        return new FilterProductItemProcessor();
+    }
+
+    @Bean
+    public ValidatingItemProcessor<Product> validatingItemProcessor(){
+        ValidatingItemProcessor<Product> validatingItemProcessor = new ValidatingItemProcessor<>(new ProductValidator());
+        validatingItemProcessor.setFilter(true); //this will stop failing the entire job, instead it will exclude the invalid record
+        return validatingItemProcessor;
+    }
+
+    //Chaining of itemprocessors
+    public CompositeItemProcessor<Product, OSProduct> compositeItemProcessor(){
+        CompositeItemProcessor<Product, OSProduct> itemProcessor=new CompositeItemProcessor<>();
+        List itemProcessors=new ArrayList();
+        itemProcessors.add(validatingItemProcessor());
+        itemProcessors.add(filterProductItemProcessor());
+        itemProcessors.add(transformProductItemProcessor());
+        itemProcessor.setDelegates(itemProcessors);
+        return itemProcessor;
     }
 
     @Bean
@@ -190,11 +210,19 @@ public class BatchConfiguration {
 //                .build();
 
         //4. Item processing started
+        //Transformation
+//        return new StepBuilder("ChunkBasedstep1", jobRepository)
+//                .<Product, OSProduct>chunk(3)
+//                .reader(jdbcPagingItemReader(dataSource))
+//                .processor(transformProductItemProcessor())
+//                .writer(jdbcBatchItemWriter(dataSource))
+//                .build();
 
+        //Filtering, validation
         return new StepBuilder("ChunkBasedstep1", jobRepository)
                 .<Product, OSProduct>chunk(3)
                 .reader(jdbcPagingItemReader(dataSource))
-                .processor(myProductItemProcessor())
+                .processor(compositeItemProcessor())
                 .writer(jdbcBatchItemWriter(dataSource))
                 .build();
     }
