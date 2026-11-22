@@ -3,15 +3,19 @@ package com.springbatch.ChunkProcessing.config;
 import com.springbatch.ChunkProcessing.domain.OSProduct;
 import com.springbatch.ChunkProcessing.domain.Product;
 import com.springbatch.ChunkProcessing.domain.ProductValidator;
+import com.springbatch.ChunkProcessing.listener.MySkipListener;
 import com.springbatch.ChunkProcessing.processor.FilterProductItemProcessor;
 import com.springbatch.ChunkProcessing.processor.TransformProductItemProcessor;
 import com.springbatch.ChunkProcessing.reader.ProductNameItemReader;
+import com.springbatch.ChunkProcessing.skippolicy.MySkipPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.listener.SkipListener;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.skip.SkipPolicy;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.batch.infrastructure.item.ItemReader;
 import org.springframework.batch.infrastructure.item.ItemWriter;
@@ -19,10 +23,13 @@ import org.springframework.batch.infrastructure.item.database.Order;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.database.builder.JdbcPagingItemReaderBuilder;
+import org.springframework.batch.infrastructure.item.file.FlatFileParseException;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.infrastructure.item.file.builder.FlatFileItemWriterBuilder;
 import org.springframework.batch.infrastructure.item.support.CompositeItemProcessor;
+import org.springframework.batch.infrastructure.item.validator.BeanValidatingItemProcessor;
 import org.springframework.batch.infrastructure.item.validator.ValidatingItemProcessor;
+import org.springframework.batch.infrastructure.item.validator.ValidationException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -149,11 +156,28 @@ public class BatchConfiguration {
         return new FilterProductItemProcessor();
     }
 
+//    @Bean
+//    public ValidatingItemProcessor<Product> validatingItemProcessor(){
+//        ValidatingItemProcessor<Product> validatingItemProcessor = new ValidatingItemProcessor<>(new ProductValidator());
+//        validatingItemProcessor.setFilter(true); //this will stop failing the entire job, instead it will exclude the invalid record
+//        return validatingItemProcessor;
+//    }
+
     @Bean
-    public ValidatingItemProcessor<Product> validatingItemProcessor(){
-        ValidatingItemProcessor<Product> validatingItemProcessor = new ValidatingItemProcessor<>(new ProductValidator());
-        validatingItemProcessor.setFilter(true); //this will stop failing the entire job, instead it will exclude the invalid record
-        return validatingItemProcessor;
+    public BeanValidatingItemProcessor<Product> validatingItemProcessor(){
+        BeanValidatingItemProcessor<Product> beanValidatingItemProcessor = new BeanValidatingItemProcessor<>();
+//        beanValidatingItemProcessor.setFilter(true); //this will stop failing the entire job, instead it will exclude the invalid record
+        return beanValidatingItemProcessor;
+    }
+
+    @Bean
+    public SkipListener mySkipListener(){
+        return new MySkipListener();
+    }
+
+    @Bean
+    public SkipPolicy mySkipPolicy(){
+        return new MySkipPolicy();
     }
 
     //Chaining of itemprocessors
@@ -221,9 +245,15 @@ public class BatchConfiguration {
         //Filtering, validation
         return new StepBuilder("ChunkBasedstep1", jobRepository)
                 .<Product, OSProduct>chunk(3)
-                .reader(jdbcPagingItemReader(dataSource))
+                .reader(flatFileItemReader())
                 .processor(compositeItemProcessor())
                 .writer(jdbcBatchItemWriter(dataSource))
+                .faultTolerant()
+//                .skip(ValidationException.class)       //these 3 are without skip policy
+//                .skip(FlatFileParseException.class)
+//                .skipLimit(3)
+                .skipPolicy(mySkipPolicy())
+                .listener(mySkipListener())
                 .build();
     }
 

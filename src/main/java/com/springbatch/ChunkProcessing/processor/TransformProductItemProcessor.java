@@ -9,7 +9,7 @@ public class TransformProductItemProcessor implements ItemProcessor<Product, OSP
 
     @Override
     public @Nullable OSProduct process(Product item) throws Exception {
-        System.out.println("transformProductItemProcessor() executed");
+        System.out.println("transformProductItemProcessor() executed for product:"+item.getProductId());
 
         //1. Same pojo transformation -> input and output pojo will be same <Product, Product>, just transforming the data inside it
 //        Integer price=item.getProductPrice();

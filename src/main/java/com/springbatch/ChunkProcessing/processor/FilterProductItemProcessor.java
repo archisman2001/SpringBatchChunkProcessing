@@ -7,9 +7,11 @@ import org.springframework.batch.infrastructure.item.ItemProcessor;
 public class FilterProductItemProcessor implements ItemProcessor<Product, Product> {
     @Override
     public @Nullable Product process(Product item) throws Exception {
-        System.out.println("filterProductItemProcessor() executed");
-        if(item.getProductPrice()>100)
-            return item;
-        return null;
+        System.out.println("filterProductItemProcessor() executed for product:"+item.getProductId());
+        //below logic commented for error(skiplistener) testing
+//        if(item.getProductPrice()>100)
+//            return item;
+//        return null;
+        return item;
     }
 }
